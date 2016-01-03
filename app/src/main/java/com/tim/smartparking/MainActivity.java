@@ -1,0 +1,482 @@
+package com.tim.smartparking;
+
+import android.app.Activity;
+import android.app.AlertDialog;
+import android.content.Context;
+import android.content.DialogInterface;
+import android.content.DialogInterface.OnCancelListener;
+import android.content.Intent;
+import android.location.Geocoder;
+import android.location.Location;
+import android.location.LocationListener;
+import android.location.LocationManager;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
+import android.os.AsyncTask;
+import android.os.Bundle;
+import android.support.design.widget.FloatingActionButton;
+import android.support.design.widget.Snackbar;
+import android.support.v7.app.AppCompatActivity;
+import android.support.v7.widget.Toolbar;
+import android.util.Log;
+import android.view.Menu;
+import android.view.MenuItem;
+import android.view.View;
+import android.view.View.OnClickListener;
+import android.widget.AdapterView;
+import android.widget.AdapterView.OnItemSelectedListener;
+import android.widget.ArrayAdapter;
+import android.widget.Button;
+import android.widget.LinearLayout;
+import android.widget.Spinner;
+import android.widget.Toast;
+
+import java.io.IOException;
+
+public class MainActivity extends AppCompatActivity {
+
+    Button btnFind;
+    static Spinner Spinner; // Спиннер
+    static AlertDialog.Builder ad; // Нужно
+    static int act = 0; // Какой активити открыть1`
+    static AlertDialog ald1, ald2, ald3; // ald3 - internet; ald2 - wait; ald1 -
+    //test							// no GPS
+    static Geocoder g; // Превращает координаты в название города
+    static String myTown; // В эту строку будет записан город, например,
+    // "Уруссу"
+    // public static IBeaconProtocol ibp;
+    public static LocationManager lm;
+    public static Location currLoc;
+    static findTown ft;
+
+    public static LocationListener locationlistener = new LocationListener() {
+
+        @Override
+        public void onLocationChanged(Location location) {
+            // TODO Auto-generated method stub
+            currLoc = location;
+        }
+
+        @Override
+        public void onProviderDisabled(String provider) {
+            // TODO Auto-generated method stub
+            ald1.show();
+        }
+
+        @Override
+        public void onProviderEnabled(String provider) {
+            // TODO Auto-generated method stub
+            if (ald1.isShowing())
+                ald1.cancel(); // Закрываем это меню, если пользователь включил
+            // GPS через шторку
+        }
+
+        @Override
+        public void onStatusChanged(String provider, int status, Bundle extras) {
+            // TODO Auto-generated method stub
+
+        }
+
+    };
+
+    public boolean isOnline() {
+        ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+        NetworkInfo nInfo = cm.getActiveNetworkInfo();
+        if (nInfo != null && nInfo.isConnected()) {
+            Log.v("status", "ONLINE");
+            return true;
+        } else {
+            Log.v("status", "OFFLINE");
+            return false;
+        }
+    }
+
+    @Override
+    public void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
+        Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
+        setSupportActionBar(toolbar);
+
+        FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
+        fab.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
+                        .setAction("Action", null).show();
+            }
+        });
+        
+		/*
+		 * // Тут инизиализируем поиск iBeacon ibp =
+		 * IBeaconProtocol.getInstance(this); ibp.setListener(new
+		 * IBeaconListener() {
+		 * 
+		 * @Override public void enterRegion(IBeacon ibeacon) { // TODO
+		 * Auto-generated method stub
+		 * 
+		 * }
+		 * 
+		 * @Override public void exitRegion(IBeacon ibeacon) { // TODO
+		 * Auto-generated method stub
+		 * 
+		 * }
+		 * 
+		 * @Override public void beaconFound(IBeacon ibeacon) { // TODO
+		 * Auto-generated method stub
+		 * 
+		 * }
+		 * 
+		 * @Override public void searchState(int state) { // TODO Auto-generated
+		 * method stub
+		 * 
+		 * }
+		 * 
+		 * @Override public void operationError(int status) { // TODO
+		 * Auto-generated method stub
+		 * 
+		 * }
+		 * 
+		 * });
+		 */
+        // Тут инициализируем геокодер и GPS-менеджер
+        g = new Geocoder(this);
+        lm = (LocationManager) getSystemService(LOCATION_SERVICE);
+
+        // Тут диалог, предлагающий найти тебя. Также тут предложение включить
+        // GPS
+        ad = new AlertDialog.Builder(this);
+
+        // Тут создаются AlertDialog'и
+        ad.setPositiveButton("", null);
+        ad.setNegativeButton("", null);
+        ad.setView((LinearLayout) getLayoutInflater().inflate(R.layout.alert_dialog, null));
+        ald2 = ad.create();
+        if (ald2 != null) {
+            ald2.setOnCancelListener(new OnCancelListener() {
+
+                @Override
+                public void onCancel(DialogInterface arg0) {
+                    // TODO Auto-generated method stub
+                    try {
+                        ft.cancel(true);
+                    } catch (NullPointerException e) {
+                    }
+                }
+
+            });
+        }
+
+        ad.setMessage(R.string.dlg_find_me);
+        ad.setNeutralButton("Хорошо", new DialogInterface.OnClickListener() {
+
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                // TODO Auto-generated method stub
+                dialog.cancel();
+            }
+        });
+        ald1 = ad.create();
+
+        ad.setTitle("Нет доступа в Интернет");
+        ad.setMessage("Для работы этой функции необходим доступ к интернету");
+        ad.setNeutralButton("Хорошо", new DialogInterface.OnClickListener() {
+
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                // TODO Auto-generated method stub
+                dialog.cancel();
+            }
+        });
+        ald3 = ad.create();
+
+        btnFind = (Button) findViewById(R.id.btnFind);
+        btnFind.setOnClickListener(new OnClickListener() {
+
+            @Override
+            public void onClick(View v) {
+                // TODO Auto-generated method stub
+                if (!lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) { // Если
+                    // выключен
+                    // GPS
+
+                    ald1.show();
+                } else {
+                    if (!isOnline()) {
+                        ald3.show();
+                    } else { // Если включен GPS
+                        startGPS();
+                        ft = new findTown();
+                        ald2.show();
+                        ft.execute(null, null, null);
+                    }
+                }
+            }
+
+        });
+
+        Spinner = (Spinner) findViewById(R.id.spinner);
+        Spinner.setOnItemSelectedListener(new OnItemSelectedListener() {
+
+            @Override
+            public void onItemSelected(AdapterView<?> arg0, View arg1,
+                                       int arg2, long arg3) {
+
+                switch (arg2) {
+                    case 0:
+                        ((Spinner)findViewById(R.id.spinner1)).setVisibility(View.INVISIBLE);
+                        ((Button)findViewById(R.id.button1)).setVisibility(View.INVISIBLE);
+                        break;
+                    case 1:
+                        ((Spinner)findViewById(R.id.spinner1)).setAdapter(new ArrayAdapter<String>(MainActivity.this,
+                                android.R.layout.simple_list_item_1,
+                                MainActivity.this.getResources().getStringArray(R.array.ChelniParks)));
+                        ((Spinner)findViewById(R.id.spinner1)).performClick();
+                        ((Spinner)findViewById(R.id.spinner1)).setVisibility(View.VISIBLE);
+                        ((Button)findViewById(R.id.button1)).setVisibility(View.VISIBLE);//Chelny
+                        break;
+                    case 2:
+                        ((Spinner)findViewById(R.id.spinner1)).setAdapter(new ArrayAdapter<String>(MainActivity.this,
+                                android.R.layout.simple_list_item_1,
+                                MainActivity.this.getResources().getStringArray(R.array.KazanParks)));
+                        ((Spinner)findViewById(R.id.spinner1)).performClick();
+                        ((Spinner)findViewById(R.id.spinner1)).setVisibility(View.VISIBLE);
+                        ((Button)findViewById(R.id.button1)).setVisibility(View.VISIBLE);//Kazan
+                        break;
+                }
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> arg0) {
+                // TODO Auto-generated method stub
+
+            }
+        });
+
+        ((Spinner)findViewById(R.id.spinner1)).setOnItemSelectedListener(new OnItemSelectedListener() {
+
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                if(((Spinner)findViewById(R.id.spinner)).getSelectedItemPosition()==1)
+                {
+                    switch(position)
+                    {
+                        case 0:
+                            break;
+                        case 1:
+                            Intent i = new Intent();
+                            i.setClass(MainActivity.this, Kruiz.class);
+                            startActivity(i);
+                            break;
+                        case 2:
+                            Intent ir = new Intent();
+                            ir.setClass(MainActivity.this, Garag500.class);
+                            startActivity(ir);
+                            break;
+                    }
+                }
+                else
+                {
+                    switch(position)
+                    {
+                        case 0 : break;
+                        case 1:
+                            Intent i = new Intent();
+                            i.setClass(MainActivity.this, Kolco.class);
+                            startActivity(i);
+                            break;
+                        case 2:
+                            Intent ir = new Intent();
+                            ir.setClass(MainActivity.this, Chistopolskaya.class);
+                            startActivity(ir);
+                            break;
+                    }
+                }
+
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {
+                // TODO Auto-generated method stub
+
+            }
+        });
+
+    }
+
+    // Not used
+	/*
+	 * private void scanBeacons(){ // Check Bluetooth every time
+	 * Log.i(Utils.LOG_TAG,"Scanning");
+	 * 
+	 * // Filter based on default easiBeacon UUID, remove if not required
+	 * //_ibp.setScanUUID(UUID here);
+	 * 
+	 * if(!IBeaconProtocol.configureBluetoothAdapter(this)){ //Intent
+	 * enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
+	 * //startActivityForResult(enableBtIntent, 9 ); }else{ if(ibp.isScanning())
+	 * ibp.stopScan(); ibp.reset(); ibp.startScan(); } }
+	 */
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        getMenuInflater().inflate(R.menu.main, menu);
+        return true;
+    }
+
+    private static long back_pressed;
+
+    @Override
+    public void onBackPressed() {
+        if (back_pressed + 2000 > System.currentTimeMillis())
+            super.onBackPressed();
+        else
+            Toast.makeText(getBaseContext(), R.string.exit, Toast.LENGTH_SHORT)
+                    .show();
+        back_pressed = System.currentTimeMillis();
+    }
+
+    public static void stopGPS() {
+        try {
+            lm.removeUpdates(locationlistener);
+        } catch(SecurityException e) {
+
+        }
+    }
+
+    public static void startGPS() {
+        try {
+            lm.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 1000, 1000,
+                    locationlistener);
+        } catch(SecurityException e) {}
+    }
+
+    protected void onResume() {
+        super.onResume();
+        Spinner.setSelection(0);
+        // scanBeacons();
+    }
+
+    protected void onPause() {
+        super.onPause();
+        stopGPS();
+        stopAll();
+		/*
+		 * if(ibp.isScanning()) { ibp.stopScan(); }
+		 */
+    }
+
+    public void startAct() {
+        if (act == 1) {
+            ((Spinner)findViewById(R.id.spinner)).setSelection(1);
+        } else if (act == 2) {
+            ((Spinner)findViewById(R.id.spinner)).setSelection(2);
+        }
+    }
+
+    public static String findMyTown(String s) {
+        int a, b;
+        a = s.indexOf(",1:\"") + 4;
+        b = s.indexOf("\"", a);
+        return s.substring(a, b);
+    }
+
+    public void onActivityResult(int requestCode, int resultCode, Intent data) {
+        if (requestCode == 9) {
+            if (resultCode == Activity.RESULT_OK) {
+                // scanBeacons();
+            }
+        }
+    }
+
+    protected void stopAll() {
+        if (ald2 != null)
+            ald2.cancel();
+        if (ald1 != null)
+            ald1.cancel();
+        if (ald3 != null)
+            ald3.cancel();
+        try {
+            ft.cancel(true);
+        } catch (NullPointerException e) {
+        }
+    }
+
+    public class findTown extends AsyncTask<Void, Void, Void> {
+
+        @Override
+        protected void onPreExecute() {
+
+        }
+
+        @Override
+        protected Void doInBackground(Void... params) {
+            // TODO Auto-generated method stub
+            boolean break_c = true;
+            while (break_c) {
+                try { // Здесь определяется город и записывается в строку
+                    myTown = findMyTown(g.getFromLocation(
+                            currLoc.getLatitude(), currLoc.getLongitude(), 1)
+                            .toString());
+
+                    if (myTown.equals("Казань")) {
+                        act = 2;
+                    } else if (myTown.equals("Набережные Челны")) {
+                        act = 1;
+                    } else {
+                    }
+                    break_c = false;
+                    Log.d("SP", Integer.toString(act));
+                } catch (IOException e) {
+                    if (isCancelled()) {
+                        return null;
+                    }
+                } catch (NullPointerException e1) {
+                    Log.d("SP", "Error NullPointerException");
+                    if (isCancelled()) {
+                        return null;
+                    }
+                }
+            }
+            ald2.cancel();
+            Log.d("ASYNC", "Finished!");
+            startAct();
+            return null;
+        }
+
+        @Override
+        protected void onPostExecute(Void result) {
+        }
+    }
+
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        // Handle action bar item clicks here. The action bar will
+        // automatically handle clicks on the Home/Up button, so long
+        // as you specify a parent activity in AndroidManifest.xml.
+        int id = item.getItemId();
+        if (id == R.id.action_settings) {
+            Intent intent = new Intent(MainActivity.this, Configuration.class);
+            startActivity(intent);
+        }
+        return super.onOptionsItemSelected(item);
+    }
+
+    public void onFind(View v) {
+        if(((Spinner)findViewById(R.id.spinner)).getSelectedItemPosition()==2) {
+            Intent intent = new Intent();
+            intent.setClass(this, GooglePlaceActivity.class);
+            startActivity(intent);
+        }
+        else
+        {
+            Intent intent = new Intent();
+            intent.setClass(this, BeaconMap.class);
+            startActivity(intent);
+        }
+    }
+
+
+
+}
