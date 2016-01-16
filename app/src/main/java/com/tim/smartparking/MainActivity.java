@@ -1,10 +1,7 @@
 package com.tim.smartparking;
 
 import android.app.Activity;
-import android.app.AlertDialog;
 import android.content.Context;
-import android.content.DialogInterface;
-import android.content.DialogInterface.OnCancelListener;
 import android.content.Intent;
 import android.location.Geocoder;
 import android.location.Location;
@@ -12,12 +9,13 @@ import android.location.LocationListener;
 import android.location.LocationManager;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
+import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.provider.Settings;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
-import android.support.v7.widget.Toolbar;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -27,29 +25,28 @@ import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemSelectedListener;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
-import android.widget.LinearLayout;
 import android.widget.Spinner;
 import android.widget.Toast;
+
+import com.google.android.gms.appindexing.Action;
+import com.google.android.gms.appindexing.AppIndex;
+import com.google.android.gms.common.api.GoogleApiClient;
 
 import java.io.IOException;
 
 public class MainActivity extends AppCompatActivity {
 
-    Button btnFind;
     static Spinner Spinner; // Спиннер
-    static AlertDialog.Builder ad; // Нужно
-    static int act = 0; // Какой активити открыть1`
-    static AlertDialog ald1, ald2, ald3; // ald3 - internet; ald2 - wait; ald1 -
-    //test							// no GPS
-    static Geocoder g; // Превращает координаты в название города
-    static String myTown; // В эту строку будет записан город, например,
+    public static int act = 0; // Какой активити открыть1
+    private static Geocoder g; // Превращает координаты в название города
+    public static String myTown; // В эту строку будет записан город, например,
     // "Уруссу"
     // public static IBeaconProtocol ibp;
-    public static LocationManager lm;
-    public static Location currLoc;
-    static findTown ft;
-
-    public static LocationListener locationlistener = new LocationListener() {
+    private static LocationManager lm;
+    private static Location currLoc;
+    private static findTown ft;
+    private static final String LOG_TAG = "SP";
+    private static LocationListener locationlistener = new LocationListener() {
 
         @Override
         public void onLocationChanged(Location location) {
@@ -60,33 +57,34 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public void onProviderDisabled(String provider) {
             // TODO Auto-generated method stub
-            ald1.show();
         }
 
         @Override
         public void onProviderEnabled(String provider) {
             // TODO Auto-generated method stub
-            if (ald1.isShowing())
-                ald1.cancel(); // Закрываем это меню, если пользователь включил
-            // GPS через шторку
         }
 
         @Override
         public void onStatusChanged(String provider, int status, Bundle extras) {
             // TODO Auto-generated method stub
-
+            Log.d(LOG_TAG, "Provider status: " + status);
         }
 
     };
+    /**
+     * ATTENTION: This was auto-generated to implement the App Indexing API.
+     * See https://g.co/AppIndexing/AndroidStudio for more information.
+     */
+    private GoogleApiClient client;
 
     public boolean isOnline() {
         ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
         NetworkInfo nInfo = cm.getActiveNetworkInfo();
         if (nInfo != null && nInfo.isConnected()) {
-            Log.v("status", "ONLINE");
+            Log.v(LOG_TAG, "Internet works!");
             return true;
         } else {
-            Log.v("status", "OFFLINE");
+            Log.v(LOG_TAG, "NO INTERNET");
             return false;
         }
     }
@@ -95,20 +93,47 @@ public class MainActivity extends AppCompatActivity {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
-        setSupportActionBar(toolbar);
+
+        g = new Geocoder(MainActivity.this);
+        lm = (LocationManager) getSystemService(LOCATION_SERVICE);
 
         FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
-        fab.setOnClickListener(new View.OnClickListener() {
+        fab.setOnClickListener(new OnClickListener() {
             @Override
             public void onClick(View view) {
-                Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
-                        .setAction("Action", null).show();
+                if (isOnline() && lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) {
+                    Snackbar.make(view, "Мы пытаемся найти вас...", Snackbar.LENGTH_SHORT)
+                            .setAction("Action", null).show();
+                    try {
+                        startGPS();
+                    } catch (Exception e) {
+
+                    }
+                    ft = new findTown();
+                    if (ft.getStatus() == AsyncTask.Status.RUNNING) {
+                        ft.cancel(true);
+                    }
+                    ft.execute(null, null);
+                } else if (!isOnline()) {
+                    Snackbar.make(view, "Нет интернет-соединения", Snackbar.LENGTH_LONG).setAction("Настройки", new OnClickListener() {
+                        @Override
+                        public void onClick(View v) {
+                            startActivity(new Intent(Settings.ACTION_WIRELESS_SETTINGS));
+                        }
+                    }).show();
+                } else {
+                    Snackbar.make(view, "Необходимо включить местоположение по сетям", Snackbar.LENGTH_LONG).setAction("Настройки", new OnClickListener() {
+                        @Override
+                        public void onClick(View v) {
+                            startActivity(new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS));
+                        }
+                    }).show();
+                }
             }
         });
         
 		/*
-		 * // Тут инизиализируем поиск iBeacon ibp =
+         * // Тут инизиализируем поиск iBeacon ibp =
 		 * IBeaconProtocol.getInstance(this); ibp.setListener(new
 		 * IBeaconListener() {
 		 * 
@@ -139,81 +164,6 @@ public class MainActivity extends AppCompatActivity {
 		 * 
 		 * });
 		 */
-        // Тут инициализируем геокодер и GPS-менеджер
-        g = new Geocoder(this);
-        lm = (LocationManager) getSystemService(LOCATION_SERVICE);
-
-        // Тут диалог, предлагающий найти тебя. Также тут предложение включить
-        // GPS
-        ad = new AlertDialog.Builder(this);
-
-        // Тут создаются AlertDialog'и
-        ad.setPositiveButton("", null);
-        ad.setNegativeButton("", null);
-        ad.setView((LinearLayout) getLayoutInflater().inflate(R.layout.alert_dialog, null));
-        ald2 = ad.create();
-        if (ald2 != null) {
-            ald2.setOnCancelListener(new OnCancelListener() {
-
-                @Override
-                public void onCancel(DialogInterface arg0) {
-                    // TODO Auto-generated method stub
-                    try {
-                        ft.cancel(true);
-                    } catch (NullPointerException e) {
-                    }
-                }
-
-            });
-        }
-
-        ad.setMessage(R.string.dlg_find_me);
-        ad.setNeutralButton("Хорошо", new DialogInterface.OnClickListener() {
-
-            @Override
-            public void onClick(DialogInterface dialog, int which) {
-                // TODO Auto-generated method stub
-                dialog.cancel();
-            }
-        });
-        ald1 = ad.create();
-
-        ad.setTitle("Нет доступа в Интернет");
-        ad.setMessage("Для работы этой функции необходим доступ к интернету");
-        ad.setNeutralButton("Хорошо", new DialogInterface.OnClickListener() {
-
-            @Override
-            public void onClick(DialogInterface dialog, int which) {
-                // TODO Auto-generated method stub
-                dialog.cancel();
-            }
-        });
-        ald3 = ad.create();
-
-        btnFind = (Button) findViewById(R.id.btnFind);
-        btnFind.setOnClickListener(new OnClickListener() {
-
-            @Override
-            public void onClick(View v) {
-                // TODO Auto-generated method stub
-                if (!lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) { // Если
-                    // выключен
-                    // GPS
-
-                    ald1.show();
-                } else {
-                    if (!isOnline()) {
-                        ald3.show();
-                    } else { // Если включен GPS
-                        startGPS();
-                        ft = new findTown();
-                        ald2.show();
-                        ft.execute(null, null, null);
-                    }
-                }
-            }
-
-        });
 
         Spinner = (Spinner) findViewById(R.id.spinner);
         Spinner.setOnItemSelectedListener(new OnItemSelectedListener() {
@@ -224,24 +174,24 @@ public class MainActivity extends AppCompatActivity {
 
                 switch (arg2) {
                     case 0:
-                        ((Spinner)findViewById(R.id.spinner1)).setVisibility(View.INVISIBLE);
-                        ((Button)findViewById(R.id.button1)).setVisibility(View.INVISIBLE);
+                        ((Spinner) findViewById(R.id.spinner1)).setVisibility(View.INVISIBLE);
+                        ((Button) findViewById(R.id.button1)).setVisibility(View.INVISIBLE);
                         break;
                     case 1:
-                        ((Spinner)findViewById(R.id.spinner1)).setAdapter(new ArrayAdapter<String>(MainActivity.this,
+                        ((Spinner) findViewById(R.id.spinner1)).setAdapter(new ArrayAdapter<String>(MainActivity.this,
                                 android.R.layout.simple_list_item_1,
                                 MainActivity.this.getResources().getStringArray(R.array.ChelniParks)));
-                        ((Spinner)findViewById(R.id.spinner1)).performClick();
-                        ((Spinner)findViewById(R.id.spinner1)).setVisibility(View.VISIBLE);
-                        ((Button)findViewById(R.id.button1)).setVisibility(View.VISIBLE);//Chelny
+                        ((Spinner) findViewById(R.id.spinner1)).performClick();
+                        ((Spinner) findViewById(R.id.spinner1)).setVisibility(View.VISIBLE);
+                        ((Button) findViewById(R.id.button1)).setVisibility(View.VISIBLE);//Chelny
                         break;
                     case 2:
-                        ((Spinner)findViewById(R.id.spinner1)).setAdapter(new ArrayAdapter<String>(MainActivity.this,
+                        ((Spinner) findViewById(R.id.spinner1)).setAdapter(new ArrayAdapter<String>(MainActivity.this,
                                 android.R.layout.simple_list_item_1,
                                 MainActivity.this.getResources().getStringArray(R.array.KazanParks)));
-                        ((Spinner)findViewById(R.id.spinner1)).performClick();
-                        ((Spinner)findViewById(R.id.spinner1)).setVisibility(View.VISIBLE);
-                        ((Button)findViewById(R.id.button1)).setVisibility(View.VISIBLE);//Kazan
+                        ((Spinner) findViewById(R.id.spinner1)).performClick();
+                        ((Spinner) findViewById(R.id.spinner1)).setVisibility(View.VISIBLE);
+                        ((Button) findViewById(R.id.button1)).setVisibility(View.VISIBLE);//Kazan
                         break;
                 }
             }
@@ -253,14 +203,12 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        ((Spinner)findViewById(R.id.spinner1)).setOnItemSelectedListener(new OnItemSelectedListener() {
+        ((Spinner) findViewById(R.id.spinner1)).setOnItemSelectedListener(new OnItemSelectedListener() {
 
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                if(((Spinner)findViewById(R.id.spinner)).getSelectedItemPosition()==1)
-                {
-                    switch(position)
-                    {
+                if (((Spinner) findViewById(R.id.spinner)).getSelectedItemPosition() == 1) {
+                    switch (position) {
                         case 0:
                             break;
                         case 1:
@@ -274,21 +222,15 @@ public class MainActivity extends AppCompatActivity {
                             startActivity(ir);
                             break;
                     }
-                }
-                else
-                {
-                    switch(position)
-                    {
-                        case 0 : break;
+                } else {
+                    switch (position) {
+                        case 0:
+                            break;
                         case 1:
-                            Intent i = new Intent();
-                            i.setClass(MainActivity.this, Kolco.class);
-                            startActivity(i);
+                            startActivity(new Intent(MainActivity.this, Kolco.class));
                             break;
                         case 2:
-                            Intent ir = new Intent();
-                            ir.setClass(MainActivity.this, Chistopolskaya.class);
-                            startActivity(ir);
+                            startActivity(new Intent(MainActivity.this, Chistopolskaya.class));
                             break;
                     }
                 }
@@ -302,6 +244,9 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+        // ATTENTION: This was auto-generated to implement the App Indexing API.
+        // See https://g.co/AppIndexing/AndroidStudio for more information.
+        client = new GoogleApiClient.Builder(this).addApi(AppIndex.API).build();
     }
 
     // Not used
@@ -339,8 +284,9 @@ public class MainActivity extends AppCompatActivity {
     public static void stopGPS() {
         try {
             lm.removeUpdates(locationlistener);
-        } catch(SecurityException e) {
-
+            Log.d(LOG_TAG, "Removed location updates");
+        } catch (SecurityException e) {
+            e.printStackTrace();
         }
     }
 
@@ -348,30 +294,36 @@ public class MainActivity extends AppCompatActivity {
         try {
             lm.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 1000, 1000,
                     locationlistener);
-        } catch(SecurityException e) {}
+            Log.d(LOG_TAG, "Registered for location updates");
+        } catch (SecurityException e) {
+            e.printStackTrace();
+        }
     }
 
     protected void onResume() {
         super.onResume();
         Spinner.setSelection(0);
+        try {
+            startGPS();
+        } catch (Exception e) {
+        }
         // scanBeacons();
     }
 
     protected void onPause() {
         super.onPause();
-        stopGPS();
-        stopAll();
-		/*
-		 * if(ibp.isScanning()) { ibp.stopScan(); }
-		 */
-    }
-
-    public void startAct() {
-        if (act == 1) {
-            ((Spinner)findViewById(R.id.spinner)).setSelection(1);
-        } else if (act == 2) {
-            ((Spinner)findViewById(R.id.spinner)).setSelection(2);
+        try {
+            stopGPS();
+        } catch (Exception e) {
         }
+        try {
+            ft.cancel(true);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        /*
+         * if(ibp.isScanning()) { ibp.stopScan(); }
+		 */
     }
 
     public static String findMyTown(String s) {
@@ -389,28 +341,54 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    protected void stopAll() {
-        if (ald2 != null)
-            ald2.cancel();
-        if (ald1 != null)
-            ald1.cancel();
-        if (ald3 != null)
-            ald3.cancel();
-        try {
-            ft.cancel(true);
-        } catch (NullPointerException e) {
-        }
+    @Override
+    public void onStart() {
+        super.onStart();
+
+        // ATTENTION: This was auto-generated to implement the App Indexing API.
+        // See https://g.co/AppIndexing/AndroidStudio for more information.
+        client.connect();
+        Action viewAction = Action.newAction(
+                Action.TYPE_VIEW, // TODO: choose an action type.
+                "Main Page", // TODO: Define a title for the content shown.
+                // TODO: If you have web page content that matches this app activity's content,
+                // make sure this auto-generated web page URL is correct.
+                // Otherwise, set the URL to null.
+                Uri.parse("http://host/path"),
+                // TODO: Make sure this auto-generated app deep link URI is correct.
+                Uri.parse("android-app://com.tim.smartparking/http/host/path")
+        );
+        AppIndex.AppIndexApi.start(client, viewAction);
     }
 
-    public class findTown extends AsyncTask<Void, Void, Void> {
+    @Override
+    public void onStop() {
+        super.onStop();
+
+        // ATTENTION: This was auto-generated to implement the App Indexing API.
+        // See https://g.co/AppIndexing/AndroidStudio for more information.
+        Action viewAction = Action.newAction(
+                Action.TYPE_VIEW, // TODO: choose an action type.
+                "Main Page", // TODO: Define a title for the content shown.
+                // TODO: If you have web page content that matches this app activity's content,
+                // make sure this auto-generated web page URL is correct.
+                // Otherwise, set the URL to null.
+                Uri.parse("http://host/path"),
+                // TODO: Make sure this auto-generated app deep link URI is correct.
+                Uri.parse("android-app://com.tim.smartparking/http/host/path")
+        );
+        AppIndex.AppIndexApi.end(client, viewAction);
+        client.disconnect();
+    }
+
+    public class findTown extends AsyncTask<Void, Void, String> {
 
         @Override
         protected void onPreExecute() {
-
         }
 
         @Override
-        protected Void doInBackground(Void... params) {
+        protected String doInBackground(Void... params) {
             // TODO Auto-generated method stub
             boolean break_c = true;
             while (break_c) {
@@ -418,34 +396,36 @@ public class MainActivity extends AppCompatActivity {
                     myTown = findMyTown(g.getFromLocation(
                             currLoc.getLatitude(), currLoc.getLongitude(), 1)
                             .toString());
-
                     if (myTown.equals("Казань")) {
                         act = 2;
                     } else if (myTown.equals("Набережные Челны")) {
                         act = 1;
-                    } else {
                     }
                     break_c = false;
-                    Log.d("SP", Integer.toString(act));
+                    Log.d(LOG_TAG, Integer.toString(act));
+                    Log.d(LOG_TAG, myTown);
                 } catch (IOException e) {
                     if (isCancelled()) {
                         return null;
                     }
                 } catch (NullPointerException e1) {
-                    Log.d("SP", "Error NullPointerException");
                     if (isCancelled()) {
+                        cancel(true);
                         return null;
                     }
                 }
             }
-            ald2.cancel();
-            Log.d("ASYNC", "Finished!");
-            startAct();
-            return null;
+            Log.d(LOG_TAG, "Finished Async!");
+            return myTown;
         }
 
         @Override
-        protected void onPostExecute(Void result) {
+        protected void onPostExecute(String result) {
+            if (act == 2) {
+                startActivity(new Intent(MainActivity.this, KazanParks.class));
+            } else if (act == 1) {
+                startActivity(new Intent(MainActivity.this, ChelniParks.class));
+            }
         }
     }
 
@@ -464,19 +444,16 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void onFind(View v) {
-        if(((Spinner)findViewById(R.id.spinner)).getSelectedItemPosition()==2) {
+        if (((Spinner) findViewById(R.id.spinner)).getSelectedItemPosition() == 2) {
             Intent intent = new Intent();
             intent.setClass(this, GooglePlaceActivity.class);
             startActivity(intent);
-        }
-        else
-        {
+        } else {
             Intent intent = new Intent();
             intent.setClass(this, BeaconMap.class);
             startActivity(intent);
         }
     }
-
 
 
 }
