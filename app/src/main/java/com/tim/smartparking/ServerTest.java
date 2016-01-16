@@ -7,8 +7,10 @@ import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.ProgressDialog;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.SharedPreferences.Editor;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.provider.Settings.Secure;
@@ -38,6 +40,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Random;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -46,6 +49,7 @@ import java.util.concurrent.TimeoutException;
 public class ServerTest extends Activity {
 
     private static final String LOG_TAG = "SP";
+    private static final String LOG_TAG_CHECK = "check";
     public static String s = "";
     public static int parkPlace;
     public static long parkTime;
@@ -59,8 +63,17 @@ public class ServerTest extends Activity {
     JSONParser jsonParser = new JSONParser();
     private static String url_create_space = "http://testing44.rurs.net/create_space.php";
     private static final String TAG_SUCCESS = "success";
-    private static Context context;
     private static String android_id;
+    private static String session_id;
+    private static final String TAG_ANDROID_ID = "android_id";
+    private static final String TAG_SESSION_ID = "session_id";
+    public static final String APP_PREFERENCES = "mydata";
+    public static final String SAVED_SESSION_ID = "DataSession";
+    public static final String SAVED_ANDROID_ID = "DataAndroid";
+    public static final String SAVED_PLACE = "DataPlace";
+    SharedPreferences mSettings;
+
+
 
 
     private void setColorCars(String s) {
@@ -108,6 +121,26 @@ public class ServerTest extends Activity {
         setContentView(R.layout.kolco_map1);
 
         ad = new AlertDialog.Builder(this);
+        mSettings = getSharedPreferences(APP_PREFERENCES, Context.MODE_PRIVATE);
+
+        if(mSettings.contains(SAVED_ANDROID_ID)) {
+            String savedDataAndroid = mSettings.getString(SAVED_ANDROID_ID, "");
+            android_id = savedDataAndroid;
+            Toast.makeText(this, "Android ID loaded", Toast.LENGTH_SHORT).show();
+        }
+
+        if(mSettings.contains(SAVED_SESSION_ID)) {
+            String savedDataSession =  mSettings.getString(SAVED_SESSION_ID, "");
+            session_id = savedDataSession;
+            Toast.makeText(this, "Session ID loaded", Toast.LENGTH_SHORT).show();
+        }
+
+        if(mSettings.contains(SAVED_PLACE)){
+            String savedDataPlace = mSettings.getString(SAVED_PLACE, "");
+            Integer savedDataInt = new Integer(savedDataPlace);
+            parkPlace = savedDataInt;
+            Toast.makeText(this, "Place loaded", Toast.LENGTH_SHORT).show();
+        }
 
         // Тут создаются AlertDialog'и
         ad.setPositiveButton("", null);
@@ -118,7 +151,8 @@ public class ServerTest extends Activity {
         //узнаём android ID
         android_id = Secure.getString(this.getContentResolver(),
                 Secure.ANDROID_ID);
-        Log.d("Server", "Android ID : " + android_id);
+
+        CheckLog();
 
         SharedPreferences storage = this.getSharedPreferences("Configuration", MODE_MULTI_PROCESS);
 		final String name = storage.getString("name", "Malik");
@@ -155,13 +189,11 @@ public class ServerTest extends Activity {
                               ((TextView) v).setText(name);
                           } catch (NullPointerException e) {
                           }
-                          Toast.makeText(ServerTest.this, "Saved", Toast.LENGTH_SHORT).show();
                           Notification.Builder nb = new Notification.Builder(getApplicationContext());
                           NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
                           SimpleDateFormat sdf = new SimpleDateFormat("HH:mm");
                           parkPlace = Integer.parseInt(v.getTag().toString());
                           String push = "Вы припарковались на месте " + parkPlace + ". Время парковки: " + sdf.format(System.currentTimeMillis());
-                          Log.d("Server", "parkPlace : " + parkPlace);
                           nm.cancel(5);
                           nb.setOngoing(true)
                                   .setSmallIcon(R.drawable.ic_launcher)
@@ -172,9 +204,18 @@ public class ServerTest extends Activity {
                           Notification notif = new Notification.BigTextStyle(nb).bigText(push).build();
                           nm.notify(5, notif);
                           parkTime = System.currentTimeMillis();
-                          new CreateNewProduct().execute();
-                          Log.d("Server","parkTime: "+parkTime);
+                          char[] chars = "abcdefghijklmnopqrstuvwxyz123456789".toCharArray();
+                          StringBuilder sb = new StringBuilder();
+                          Random random = new Random();
+                          for (int i = 0; i < 20; i++) {
+                              char c = chars[random.nextInt(chars.length)];
+                              sb.append(c);
+                          }
+                          session_id = sb.toString();
+                          CheckLog();
+                          SaveData();
                           refresh();
+                          new CreateNewProduct().execute();
                           return false;
                       } else {
                           SharedPreferences storage = ServerTest.this.getSharedPreferences("Configuration", MODE_MULTI_PROCESS);
@@ -218,6 +259,24 @@ public class ServerTest extends Activity {
 		});
     }
 
+    void SaveData(){
+        Editor editor = mSettings.edit();
+        editor.putString(SAVED_ANDROID_ID, android_id);
+        editor.putString(SAVED_SESSION_ID, session_id);
+        String parkPlaceStr = Integer.toString(parkPlace);
+        editor.putString(SAVED_PLACE, parkPlaceStr);
+        editor.apply();
+        Log.d(LOG_TAG_CHECK, "Данные тип сохранились");
+    }
+
+
+    //Засунем сюда все логи, и будем вызывать где нужно (бордак в коде с логами уже )
+    void CheckLog(){
+        Log.d(LOG_TAG_CHECK, "Place: " + parkPlace);
+        Log.d(LOG_TAG_CHECK, "Park Time: " + parkTime);
+        Log.d(LOG_TAG_CHECK, "Android ID: " + android_id);
+        Log.d(LOG_TAG_CHECK, "Session ID: " + session_id);
+    }
 
     protected void driveAway(int pos) {
         Log.d(LOG_TAG, "Driving away");
@@ -235,6 +294,28 @@ public class ServerTest extends Activity {
         Notification notif = new Notification.BigTextStyle(nb).bigText(thank).build();
         unparkTime = System.currentTimeMillis();
         nm.notify(5, notif);
+        AlertDialog.Builder builder = new AlertDialog.Builder(ServerTest.this);
+        builder.setTitle("Спасибо за парковку!")
+                .setMessage("Осталось всего лишь оплатить..")
+                .setIcon(R.drawable.ic_android_pay)
+                .setCancelable(false)
+                .setNegativeButton("Отдать деньги",
+                        new DialogInterface.OnClickListener() {
+                            public void onClick(DialogInterface dialog, int id) {
+                                launchIntent();
+                            }
+                        });
+        AlertDialog alert = builder.create();
+        alert.show();
+    }
+
+
+    private void launchIntent() {
+        Intent it = new Intent(ServerTest.this, OplataActivity.class);
+        it.putExtra(TAG_ANDROID_ID, android_id);
+        it.putExtra(TAG_SESSION_ID, session_id);
+        it.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        startActivity(it);
     }
 
 	protected void refresh() {
@@ -361,7 +442,6 @@ public class ServerTest extends Activity {
             pDialog.setIndeterminate(false);
             pDialog.setCancelable(true);
             pDialog.show();
-            pDialog.dismiss();
         }
 
         /**
@@ -374,24 +454,20 @@ public class ServerTest extends Activity {
             List<NameValuePair> params = new ArrayList<NameValuePair>();
             params.add(new BasicNameValuePair("android_id", android_id));
             params.add(new BasicNameValuePair("parkPlace", parkPlaceStr));
+            params.add(new BasicNameValuePair("session_id", session_id));
+
 
             // получаем JSON объект
             JSONObject json = jsonParser.makeHttpRequest(url_create_space, "POST", params);
 
-            try {
-                Log.d("Create Response", json.toString());
-            } catch(NullPointerException e) {
-                Log.d("Create Response", "Null pointer!");
-            }
+            Log.d("Create Response", json.toString());
 
             try {
                 int success = json.getInt(TAG_SUCCESS);
 
                 if (success == 1) {
                     // успех ёпт
-                    Toast toast = Toast.makeText(getApplicationContext(),
-                            "Успешно припорковались!", Toast.LENGTH_SHORT);
-                    toast.show();
+                    Log.d(LOG_TAG, "Parking Success");
                 }
             } catch (JSONException e) {
                 e.printStackTrace();
@@ -408,4 +484,5 @@ public class ServerTest extends Activity {
         }
 
     }
+
 }

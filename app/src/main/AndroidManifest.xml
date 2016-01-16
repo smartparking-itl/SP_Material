@@ -86,7 +86,8 @@
     </activity>
     <activity android:name=".ServerOplata" >
     </activity>
-    <activity android:name=".OplataActivity"></activity>
+  <activity android:name=".OplataActivity"
+            android:screenOrientation="portrait" ></activity>
     <activity
         android:name=".ServerTest"
         android:label="@string/title_activity_server_test"

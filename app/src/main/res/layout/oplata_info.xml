@@ -6,6 +6,16 @@
     android:orientation="vertical">
 
     <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textAppearance="?android:attr/textAppearanceLarge"
+        android:text="Информация"
+        android:id="@+id/textView9"
+        android:layout_gravity="center_horizontal"
+        android:textSize="48sp"
+        android:textStyle="bold" />
+
+    <TextView
         android:id="@+id/textView"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -29,5 +39,12 @@
         android:layout_marginTop="30dp"
         android:text="Поднесите устройство к валидатору"
         android:textAppearance="?android:attr/textAppearanceLarge" />
+
+    <Button
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Оплатить"
+        android:id="@+id/pay"
+        android:layout_gravity="center_horizontal" />
 
 </LinearLayout>
