@@ -25,6 +25,7 @@ import android.widget.Toast;
 
 import org.apache.http.NameValuePair;
 import org.apache.http.message.BasicNameValuePair;
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -71,7 +72,12 @@ public class ServerTest extends Activity {
     public static final String SAVED_SESSION_ID = "DataSession";
     public static final String SAVED_ANDROID_ID = "DataAndroid";
     public static final String SAVED_PLACE = "DataPlace";
+    private static final String TAG_PLACE = "place";
     SharedPreferences mSettings;
+    JSONParser jParser = new JSONParser();
+    private static String url_find_session = "http://testing44.rurs.net/find_session.php";
+    JSONArray session_id_load = null;
+    ArrayList<HashMap<String, String>> productsList;
 
 
 
@@ -133,6 +139,8 @@ public class ServerTest extends Activity {
             String savedDataSession =  mSettings.getString(SAVED_SESSION_ID, "");
             session_id = savedDataSession;
             Toast.makeText(this, "Session ID loaded", Toast.LENGTH_SHORT).show();
+        } else {
+            new LoadSession().execute();
         }
 
         if(mSettings.contains(SAVED_PLACE)){
@@ -480,6 +488,93 @@ public class ServerTest extends Activity {
          * После оконачния скрываем прогресс диалог
          **/
         protected void onPostExecute(String file_url) {
+            pDialog.dismiss();
+        }
+
+    }
+
+    class LoadSession extends AsyncTask<String, String, String> {
+
+        /**
+         * Перед началом фонового потока Show Progress Dialog
+         */
+        @Override
+        protected void onPreExecute() {
+            super.onPreExecute();
+            pDialog = new ProgressDialog(ServerTest.this);
+            pDialog.setMessage("Загрузка сессии, подождите...");
+            pDialog.setIndeterminate(false);
+            pDialog.setCancelable(false);
+            pDialog.show();
+        }
+
+        /**
+         * Получаем все продукт из url
+         */
+        protected String doInBackground(String... args) {
+            // Будет хранить параметры
+            List<NameValuePair> params = new ArrayList<NameValuePair>();
+            params.add(new BasicNameValuePair("android_id", android_id));
+            // получаем JSON строк с URL
+            JSONObject json_post = jsonParser.makeHttpRequest(url_find_session, "POST", params);
+            JSONObject json = jParser.makeHttpRequest(url_find_session, "GET", params);
+
+            Log.d("Create Response", json_post.toString());
+            Log.d("Session ID: ", json.toString());
+
+            try {
+                int success = json_post.getInt(TAG_SUCCESS);
+
+                if (success == 1) {
+                    // успех ёпт
+                    Log.d(LOG_TAG_CHECK, "Android_id send");
+                }
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
+
+            try {
+                // Получаем SUCCESS тег для проверки статуса ответа сервера
+                int success = json.getInt(TAG_SUCCESS);
+
+                if (success == 1) {
+                    // продукт найден
+                    // Получаем масив из Продуктов
+                    session_id_load = json.getJSONArray(TAG_PLACE);
+
+                    // перебор всех продуктов
+                    for (int i = 0; i < session_id_load.length(); i++) {
+                        JSONObject c = session_id_load.getJSONObject(i);
+
+                        // Сохраняем каждый json елемент в переменную
+                        String session_id_ld = c.getString(TAG_SESSION_ID);
+                        Log.d(LOG_TAG_CHECK, "Загруженная сессия: " + session_id_ld);
+
+                        // Создаем новый HashMap
+                        HashMap<String, String> map = new HashMap<String, String>();
+
+                        // добавляем каждый елемент в HashMap ключ => значение
+                        map.put(TAG_SESSION_ID, session_id_ld);
+                        // добавляем HashList в ArrayList
+                        productsList.add(map);
+                    }
+                } else {
+                    // продукт не найден
+                    // Пишем в лог
+                    Log.d(LOG_TAG_CHECK, "Воробушки! Сессии нет!");
+                }
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
+
+            return null;
+        }
+
+        /**
+         * После завершения фоновой задачи закрываем прогрес диалог
+         **/
+        protected void onPostExecute(String file_url) {
+            // закрываем прогресс диалог после получение сессии
             pDialog.dismiss();
         }
 
