@@ -70,6 +70,37 @@ public class MainActivityFragment extends Fragment {
     public MainActivityFragment() {
     }
 
+    public void findAndStartActivity() {
+        if (isOnline() && lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) {
+            Snackbar.make(getView(), "Мы пытаемся найти вас...", Snackbar.LENGTH_SHORT)
+                    .setAction("Action", null).show();
+            try {
+                startGPS();
+            } catch (Exception e) {
+
+            }
+            ft = new findTown();
+            if (ft.getStatus() == AsyncTask.Status.RUNNING) {
+                ft.cancel(true);
+            }
+            ft.execute(null, null);
+        } else if (!isOnline()) {
+            Snackbar.make(getView(), "Нет интернет-соединения", Snackbar.LENGTH_LONG).setAction("Настройки", new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    startActivity(new Intent(Settings.ACTION_WIRELESS_SETTINGS));
+                }
+            }).show();
+        } else {
+            Snackbar.make(getView(), "Необходимо включить местоположение по сетям", Snackbar.LENGTH_LONG).setAction("Настройки", new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    startActivity(new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS));
+                }
+            }).show();
+        }
+    }
+
     @Override
     public void onActivityCreated(Bundle savedInstanceState) {
         super.onActivityCreated(savedInstanceState);
@@ -81,34 +112,7 @@ public class MainActivityFragment extends Fragment {
         fab.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                if (isOnline() && lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) {
-                    Snackbar.make(view, "Мы пытаемся найти вас...", Snackbar.LENGTH_SHORT)
-                            .setAction("Action", null).show();
-                    try {
-                        startGPS();
-                    } catch (Exception e) {
-
-                    }
-                    ft = new findTown();
-                    if (ft.getStatus() == AsyncTask.Status.RUNNING) {
-                        ft.cancel(true);
-                    }
-                    ft.execute(null, null);
-                } else if (!isOnline()) {
-                    Snackbar.make(view, "Нет интернет-соединения", Snackbar.LENGTH_LONG).setAction("Настройки", new View.OnClickListener() {
-                        @Override
-                        public void onClick(View v) {
-                            startActivity(new Intent(Settings.ACTION_WIRELESS_SETTINGS));
-                        }
-                    }).show();
-                } else {
-                    Snackbar.make(view, "Необходимо включить местоположение по сетям", Snackbar.LENGTH_LONG).setAction("Настройки", new View.OnClickListener() {
-                        @Override
-                        public void onClick(View v) {
-                            startActivity(new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS));
-                        }
-                    }).show();
-                }
+                findAndStartActivity();
             }
         });
 

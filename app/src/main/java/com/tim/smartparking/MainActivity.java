@@ -27,15 +27,21 @@ public class MainActivity extends AppCompatActivity {
      * See https://g.co/AppIndexing/AndroidStudio for more information.
      */
     private GoogleApiClient client;
+    private static int currFragment;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        System.loadLibrary("iconv");
+
         Fragment f1 = new MainActivityFragment();
-        FragmentTransaction ftr = getSupportFragmentManager().beginTransaction();
-        ftr.replace(R.id.fragment, f1);
-        ftr.commit();
+        if (currFragment == 1 || currFragment == 0) {
+            FragmentTransaction ftr = getSupportFragmentManager().beginTransaction();
+            ftr.replace(R.id.fragment, f1);
+            ftr.commit();
+            currFragment = 1;
+        }
 
         setContentView(R.layout.activity_main);
 
@@ -57,11 +63,32 @@ public class MainActivity extends AppCompatActivity {
                             Fragment f1 = new Fragment2();
                             ftr.replace(R.id.fragment, f1);
                             ftr.commit();
+                            currFragment = 2;
                         }
-                        return true;
+                        return false;
                     }
                 })
                 .build();
+
+        /*
+        QRCodeWriter writer = new QRCodeWriter();
+        try {
+            BitMatrix bitMatrix = writer.encode(content, BarcodeFormat.QR_CODE, 512, 512);
+            int width = bitMatrix.getWidth();
+            int height = bitMatrix.getHeight();
+            Bitmap bmp = Bitmap.createBitmap(width, height, Bitmap.Config.RGB_565);
+            for (int x = 0; x < width; x++) {
+                for (int y = 0; y < height; y++) {
+                    bmp.setPixel(x, y, bitMatrix.get(x, y) ? Color.BLACK : Color.WHITE);
+                }
+            }
+            ((ImageView) findViewById(R.id.img_result_qr)).setImageBitmap(bmp);
+
+        } catch (WriterException e) {
+            e.printStackTrace();
+        }
+        */
+
 
 		/*
          * // Тут инизиализируем поиск iBeacon ibp =
@@ -159,6 +186,18 @@ public class MainActivity extends AppCompatActivity {
         );
         AppIndex.AppIndexApi.end(client, viewAction);
         client.disconnect();
+    }
+
+    @Override
+    public void onSaveInstanceState(Bundle state) {
+        super.onSaveInstanceState(state);
+        state.putInt("Frag", currFragment);
+    }
+
+    @Override
+    public void onRestoreInstanceState(Bundle state) {
+        super.onRestoreInstanceState(state);
+        currFragment = state.getInt("Frag");
     }
 
     @Override

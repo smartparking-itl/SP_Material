@@ -5,7 +5,7 @@
     android:paddingRight="@dimen/activity_horizontal_margin"
     android:name="com.tim.smartparking.MainActivityFragment"
     android:paddingTop="@dimen/activity_vertical_margin"
-    android:background="#cb1c1c">
+    android:background="@drawable/bg3">
 
     <TextView
         android:id="@+id/textView1"
@@ -45,17 +45,5 @@
         android:visibility="invisible"
         android:onClick="onFind"
         android:text="@string/search_nearby" />
-
-    <android.support.design.widget.FloatingActionButton
-        android:id="@+id/fab"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="bottom|end"
-        android:src="@android:drawable/ic_menu_mylocation"
-        android:layout_marginLeft="@dimen/fab_margin"
-        android:layout_marginRight="@dimen/fab_margin"
-        android:layout_alignParentBottom="true"
-        android:layout_alignParentEnd="true" />
-
 
 </RelativeLayout>
