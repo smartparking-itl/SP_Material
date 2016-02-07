@@ -108,7 +108,7 @@ public class MainActivityFragment extends Fragment {
         lm = (LocationManager) getActivity().getSystemService(Context.LOCATION_SERVICE);
         g = new Geocoder(getContext());
 
-        FloatingActionButton fab = (FloatingActionButton) getView().findViewById(R.id.fab);
+        FloatingActionButton fab = (FloatingActionButton) getActivity().findViewById(R.id.fab);
         fab.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
