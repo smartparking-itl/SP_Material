@@ -4,9 +4,11 @@ import android.app.Activity;
 import android.app.ProgressDialog;
 import android.content.Intent;
 import android.os.AsyncTask;
+import android.os.Build;
 import android.os.Bundle;
 import android.text.Html;
 import android.util.Log;
+import android.view.WindowManager;
 import android.widget.TextView;
 
 import org.json.JSONArray;
@@ -48,8 +50,18 @@ public class SinglePlaceActivity extends Activity {
 		
 		String gps_status=getBaseContext().getString(R.string.gps_status);
 		String gps_inform=getBaseContext().getString(R.string.gps_inform);
-		
-		
+
+		if (Build.VERSION.SDK_INT >= 21) {
+
+			// Set the status bar to dark-semi-transparentish
+			getWindow().setFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS,
+					WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);
+
+			// Set paddingTop of toolbar to height of status bar.
+			// Fixes statusbar covers toolbar issue
+		}
+
+
 		// TODO Auto-generated method stub
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.single_place);

@@ -14,10 +14,12 @@ import android.app.Activity;
 import android.app.ProgressDialog;
 import android.content.Intent;
 import android.os.AsyncTask;
+import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.view.View.OnClickListener;
+import android.view.WindowManager;
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemSelectedListener;
 import android.widget.ArrayAdapter;
@@ -51,7 +53,18 @@ public class ServerOplata extends Activity implements OnItemSelectedListener {
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.oplata);
-		
+
+		if (Build.VERSION.SDK_INT >= 21) {
+
+			// Set the status bar to dark-semi-transparentish
+			getWindow().setFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS,
+					WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);
+
+			// Set paddingTop of toolbar to height of status bar.
+			// Fixes statusbar covers toolbar issue
+		}
+
+
 		btnAddNewCategory = (Button) findViewById(R.id.btnAddNewCategory);
 		final Button butStart = (Button) findViewById(R.id.btnAddNewCategory);
 		final Button butStop = (Button) findViewById(R.id.button1);

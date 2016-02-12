@@ -6,8 +6,9 @@ android {
     useLibrary 'org.apache.http.legacy'
 
     defaultConfig {
+        resConfigs "en", "ru"
         applicationId "com.tim.smartparking"
-        minSdkVersion 17
+        minSdkVersion 19
         targetSdkVersion 23
         versionCode 1
         versionName "1.0"

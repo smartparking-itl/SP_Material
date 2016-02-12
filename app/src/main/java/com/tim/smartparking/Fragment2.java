@@ -1,12 +1,16 @@
 package com.tim.smartparking;
 
+import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Color;
+import android.graphics.Point;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
+import android.view.Display;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.WindowManager;
 import android.widget.ImageView;
 
 import com.google.zxing.BarcodeFormat;
@@ -30,8 +34,14 @@ public class Fragment2 extends Fragment {
     @Override
     public void onActivityCreated(Bundle state) {
         super.onActivityCreated(state);
+        WindowManager wm = (WindowManager) getContext().getSystemService(Context.WINDOW_SERVICE);
+        Display display = wm.getDefaultDisplay();
+        Point size = new Point();
+        display.getSize(size);
+        int width = size.x;
+        int height = size.y;
         ImageView iv = (ImageView) getView().findViewById(R.id.qr);
-        iv.setImageBitmap(genQRcode("hello", 0, 0));
+        iv.setImageBitmap(genQRcode("1", width / 5, height / 5));
     }
 
     public static Bitmap genQRcode(String content, int width, int height) {

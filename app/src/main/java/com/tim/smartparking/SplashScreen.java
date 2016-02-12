@@ -2,8 +2,10 @@ package com.tim.smartparking;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.os.Build;
 import android.os.Bundle;
 import android.view.MotionEvent;
+import android.view.WindowManager;
 
 public class SplashScreen extends Activity {
 
@@ -18,6 +20,17 @@ public class SplashScreen extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.splash);
         final SplashScreen sPlashScreen = this;
+
+        if (Build.VERSION.SDK_INT >= 21) {
+
+            // Set the status bar to dark-semi-transparentish
+            getWindow().setFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS,
+                    WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);
+
+            // Set paddingTop of toolbar to height of status bar.
+            // Fixes statusbar covers toolbar issue
+        }
+
 
         // thread for displaying the SplashScreen
         splashTread = new Thread() {

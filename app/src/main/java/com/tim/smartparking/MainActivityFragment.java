@@ -1,6 +1,5 @@
 package com.tim.smartparking;
 
-import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.location.Geocoder;
@@ -10,6 +9,7 @@ import android.location.LocationManager;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.AsyncTask;
+import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
 import android.support.design.widget.FloatingActionButton;
@@ -19,6 +19,7 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.WindowManager;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
@@ -107,6 +108,17 @@ public class MainActivityFragment extends Fragment {
 
         lm = (LocationManager) getActivity().getSystemService(Context.LOCATION_SERVICE);
         g = new Geocoder(getContext());
+
+        if (Build.VERSION.SDK_INT >= 21) {
+
+            // Set the status bar to dark-semi-transparentish
+            getActivity().getWindow().setFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS,
+                    WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);
+
+            // Set paddingTop of toolbar to height of status bar.
+            // Fixes statusbar covers toolbar issue
+        }
+
 
         FloatingActionButton fab = (FloatingActionButton) getActivity().findViewById(R.id.fab);
         fab.setOnClickListener(new View.OnClickListener() {
@@ -267,14 +279,6 @@ public class MainActivityFragment extends Fragment {
         return s.substring(a, b);
     }
 
-    public void onActivityResult(int requestCode, int resultCode, Intent data) {
-        if (requestCode == 9) {
-            if (resultCode == Activity.RESULT_OK) {
-                // scanBeacons();
-            }
-        }
-    }
-
 
     public class findTown extends AsyncTask<Void, Void, String> {
 
@@ -326,15 +330,4 @@ public class MainActivityFragment extends Fragment {
         }
     }
 
-    public void onFind(View v) {
-        if (((Spinner) getView().findViewById(R.id.spinner)).getSelectedItemPosition() == 2) {
-            Intent intent = new Intent();
-            intent.setClass(getActivity(), GooglePlaceActivity.class);
-            startActivity(intent);
-        } else {
-            Intent intent = new Intent();
-            intent.setClass(getActivity(), BeaconMap.class);
-            startActivity(intent);
-        }
-    }
 }

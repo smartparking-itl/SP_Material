@@ -4,13 +4,21 @@ import android.app.Activity;
 import android.app.NotificationManager;
 import android.app.ProgressDialog;
 import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.Color;
 import android.nfc.NfcAdapter;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.ImageView;
 import android.widget.TextView;
+
+import com.google.zxing.BarcodeFormat;
+import com.google.zxing.WriterException;
+import com.google.zxing.common.BitMatrix;
+import com.google.zxing.qrcode.QRCodeWriter;
 
 import org.apache.http.NameValuePair;
 import org.apache.http.message.BasicNameValuePair;
@@ -37,6 +45,7 @@ public class OplataActivity extends Activity {
     private static final String TAG_SESSION_ID = "session_id";
     private static final String TAG_PRICE = "price";
     public static int price;
+    static ImageView iv;
 
     Button btnPay;
 
@@ -45,6 +54,7 @@ public class OplataActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.oplata_info);
         btnPay = (Button) findViewById(R.id.pay);
+        iv = (ImageView) findViewById(R.id.imageView10);
         Intent i = getIntent();
         android_id = i.getStringExtra(TAG_ANDROID_ID);
         session_id = i.getStringExtra(TAG_SESSION_ID);
@@ -133,7 +143,28 @@ public class OplataActivity extends Activity {
         protected void onPostExecute(String file_url) {
             // закрываем прогресс диалог
             pDialog.dismiss();
+            iv.setImageBitmap(genQRcode(android_id, 0, 0));
         }
+    }
+
+    public static Bitmap genQRcode(String content, int width, int height) {
+        // Возвращает Bitmap по контенту, бросает null, если что-то пошло не так. Если не указать width и height, то они будут 512
+        QRCodeWriter writer = new QRCodeWriter();
+        if (width == 0) width = 512;
+        if (height == 0) height = 512;
+        Bitmap bmp = null;
+        try {
+            BitMatrix bitMatrix = writer.encode(content, BarcodeFormat.QR_CODE, width, height);
+            bmp = Bitmap.createBitmap(width, height, Bitmap.Config.RGB_565);
+            for (int x = 0; x < width; x++) {
+                for (int y = 0; y < height; y++) {
+                    bmp.setPixel(x, y, bitMatrix.get(x, y) ? Color.BLACK : Color.WHITE);
+                }
+            }
+        } catch (WriterException e) {
+            e.printStackTrace();
+        }
+        return bmp;
     }
 
 }

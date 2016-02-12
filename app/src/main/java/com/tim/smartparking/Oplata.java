@@ -2,9 +2,11 @@ package com.tim.smartparking;
 
 import java.util.Date;
 import android.app.Activity;
+import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
 import android.view.View.OnClickListener;
+import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.TextView;
 
@@ -16,8 +18,18 @@ public class Oplata extends Activity implements OnClickListener {
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.oplata);
-		btn = (Button) findViewById(R.id.button1);
-		btn.setOnClickListener(this);
+        if (Build.VERSION.SDK_INT >= 21) {
+
+            // Set the status bar to dark-semi-transparentish
+            getWindow().setFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS,
+                    WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);
+
+            // Set paddingTop of toolbar to height of status bar.
+            // Fixes statusbar covers toolbar issue
+        }
+
+        btn = (Button) findViewById(R.id.button1);
+        btn.setOnClickListener(this);
 	}
 	public void onClick(View v) {
         switch (v.getId()) {
