@@ -176,7 +176,7 @@ public class ServerTest extends Activity {
         CheckLog();
 
         SharedPreferences storage = this.getSharedPreferences("Configuration", MODE_MULTI_PROCESS);
-		final String name = storage.getString("name", "Malik");
+		final String name = storage.getString("name", getResources().getString(R.string.you));
 		id = storage.getInt("id", -1);
 		Log.e("eclipse", "eclispe");
 
